@@ -1,48 +1,48 @@
 import os
 import sys
-import unittest
 
-# 添加项目根目录到 Python 路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.services.markdown_converter import markdown_converter
 
-class TestMarkdownConverter(unittest.TestCase):
-    def setUp(self):
-        """测试前的准备工作"""
-        self.debug_dir = "debug"
-        self.test_html_file = os.path.join(self.debug_dir, "01_debug_original.html")
 
-    def test_html_to_markdown_conversion(self):
-        """测试 HTML 到 Markdown 的转换"""
-        # 确保测试文件存在
-        self.assertTrue(os.path.exists(self.test_html_file), 
-                       f"测试文件不存在: {self.test_html_file}")
+def test_merge_wechat_images_replaces_empty_placeholders_and_appends_missing():
+    markdown = "# Title\n\n![]()\n\nParagraph\n\n![]()\n"
+    wechat_images = [
+        ("https://example.com/a.jpg", ""),
+        ("https://example.com/b.jpg", ""),
+        ("https://example.com/c.jpg", ""),
+    ]
 
-        # 读取测试 HTML 文件
-        with open(self.test_html_file, 'r', encoding='utf-8') as f:
-            html_content = f.read()
+    result = markdown_converter._merge_wechat_images_into_markdown(markdown, wechat_images)
 
-        # 执行转换
-        markdown_content, images = markdown_converter.convert(html_content)
+    assert "![]()" not in result
+    assert "https://example.com/a.jpg" in result
+    assert "https://example.com/b.jpg" in result
+    assert "https://example.com/c.jpg" in result
 
-        # 基本检查
-        self.assertIsNotNone(markdown_content)
-        self.assertIsInstance(markdown_content, str)
-        self.assertGreater(len(markdown_content), 0)
 
-        # 检查图片提取
-        self.assertIsInstance(images, list)
-        print(f"\n找到 {len(images)} 张图片:")
-        for src, alt in images:
-            print(f"- src: {src}")
-            print(f"  alt: {alt}")
+def test_convert_keeps_wechat_images_when_html_contains_empty_img_tags():
+    html = """
+    <html>
+      <body>
+        <script>
+          var picture_page_info_list = [
+            {width: 100, cdn_url: 'https://example.com/body-1.png'},
+            {width: 100, cdn_url: 'https://example.com/body-2.png'}
+          ].slice(0);
+        </script>
+        <h1>Article</h1>
+        <p>Intro</p>
+        <img src="">
+      </body>
+    </html>
+    """
 
-        # 打印转换后的 Markdown（用于手动检查）
-        print("\n转换后的 Markdown 内容:")
-        print("=" * 80)
-        print(markdown_content)
-        print("=" * 80)
+    markdown, images = markdown_converter.convert(html)
 
-if __name__ == '__main__':
-    unittest.main() 
+    assert ("https://example.com/body-1.png", "") in images
+    assert ("https://example.com/body-2.png", "") in images
+    assert "https://example.com/body-1.png" in markdown
+    assert "https://example.com/body-2.png" in markdown
+    assert "![]()" not in markdown

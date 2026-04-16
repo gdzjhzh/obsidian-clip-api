@@ -1,232 +1,304 @@
 """
-图片上传服务模块
-
-负责下载图片并上传到 PicGo 图床。
+Image upload service.
 """
 
-import aiohttp
 import asyncio
-from typing import List, Tuple, Dict
-import os
 import json
+import os
+import re
 import tempfile
 import time
-from urllib.parse import urljoin, urlparse
+from typing import Dict, List, Tuple
+from urllib.parse import unquote, urljoin, urlparse
+
+import aiohttp
+
 from ..config import config
-from ..services.notification import notifier
 from ..logger import logger
 from ..utils.debug_manager import debug_manager
-import re
 
 
 class ImageUploader:
-    """图片上传服务，负责下载图片并上传到 PicGo 图床"""
+    """Download remote images and upload them to PicList/PicGo."""
 
     def __init__(self):
-        """初始化图片上传器"""
         self.picgo_server = config.picgo_server
         self.upload_path = config.picgo_upload_path
+        self.local_path_prefix = config.picgo_local_path_prefix
+        self.local_use_wikilink = config.picgo_local_use_wikilink
 
-    async def _download_image(self, session: aiohttp.ClientSession, image_url: str) -> bytes:
-        """下载图片"""
+    def _normalize_local_image_target(self, uploaded_url: str) -> tuple[str, str]:
+        """Convert PicList local-upload paths into Obsidian-friendly references."""
+        if not uploaded_url:
+            return "markdown", uploaded_url
+
+        if self.local_path_prefix and uploaded_url.startswith(self.local_path_prefix):
+            relative_path = uploaded_url[len(self.local_path_prefix):].lstrip("/")
+            if self.local_use_wikilink:
+                return "wikilink", relative_path
+            return "markdown", f"/{relative_path}"
+
+        return "markdown", uploaded_url
+
+    def _sanitize_filename_part(self, value: str) -> str:
+        """Remove characters that are unsafe for local files."""
+        value = unquote(value or "").strip()
+        value = re.sub(r'[<>:"/\\|?*]', "_", value)
+        value = re.sub(r"\s+", "_", value)
+        return value.strip("._") or "image"
+
+    def _detect_file_extension(self, image_url: str, content_type: str, image_data: bytes) -> str:
+        """Infer a usable extension so uploaded files are real image files on disk."""
+        parsed_path = unquote(urlparse(image_url).path)
+        _, parsed_ext = os.path.splitext(parsed_path)
+        parsed_ext = parsed_ext.lower()
+        if parsed_ext in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"}:
+            return parsed_ext
+
+        content_type = (content_type or "").split(";", 1)[0].strip().lower()
+        content_type_map = {
+            "image/jpeg": ".jpg",
+            "image/png": ".png",
+            "image/gif": ".gif",
+            "image/webp": ".webp",
+            "image/bmp": ".bmp",
+            "image/svg+xml": ".svg",
+        }
+        if content_type in content_type_map:
+            return content_type_map[content_type]
+
+        header = image_data[:12]
+        if header.startswith(b"\xff\xd8\xff"):
+            return ".jpg"
+        if header.startswith(b"\x89PNG\r\n\x1a\n"):
+            return ".png"
+        if header[:6] in {b"GIF87a", b"GIF89a"}:
+            return ".gif"
+        if header.startswith(b"RIFF") and header[8:12] == b"WEBP":
+            return ".webp"
+        if header.startswith(b"BM"):
+            return ".bmp"
+        if image_data.lstrip().startswith(b"<svg"):
+            return ".svg"
+
+        return ".jpg"
+
+    def _guess_upload_filename(self, image_url: str, alt: str, content_type: str, image_data: bytes) -> str:
+        """Build a stable filename with an explicit extension."""
+        parsed_path = unquote(urlparse(image_url).path)
+        original_filename = os.path.basename(parsed_path)
+        original_stem, original_ext = os.path.splitext(original_filename)
+        extension = original_ext.lower() or self._detect_file_extension(image_url, content_type, image_data)
+
+        stem_source = alt or original_stem or "image"
+        stem = self._sanitize_filename_part(stem_source)
+        return f"{stem}{extension}"
+
+    async def _download_image(self, session: aiohttp.ClientSession, image_url: str) -> tuple[bytes, str]:
+        """Download a remote image and return its bytes plus content type."""
         start_time = time.time()
-        logger.debug(f"开始下载图片: {image_url}")
+        logger.debug(f"Start downloading image: {image_url}")
+
         try:
             async with session.get(image_url) as response:
                 if response.status != 200:
-                    raise Exception(f"下载失败，状态码: {response.status}")
-                
-                content_type = response.headers.get('content-type', '')
-                if not content_type.startswith('image/'):
-                    raise Exception(f"非图片类型: {content_type}")
-                
+                    raise Exception(f"Download failed with status {response.status}")
+
+                content_type = response.headers.get("content-type", "")
+                if not content_type.startswith("image/"):
+                    raise Exception(f"Unexpected content type: {content_type}")
+
                 image_data = await response.read()
                 elapsed = time.time() - start_time
-                logger.debug(f"图片下载成功: {len(image_data)} 字节，耗时: {elapsed:.2f}秒")
-                return image_data
-        except Exception as e:
-            logger.debug(f"下载图片失败: {str(e)}")
+                logger.debug(
+                    f"Image downloaded successfully: size={len(image_data)} elapsed={elapsed:.2f}s"
+                )
+                return image_data, content_type
+        except Exception as exc:
+            logger.debug(f"Image download failed: {exc}")
             raise
 
-    async def _upload_to_picgo(self, session: aiohttp.ClientSession, 
-                             image_data: bytes, filename: str) -> str:
-        """上传图片到 PicGo"""
+    async def _upload_to_picgo(
+        self,
+        session: aiohttp.ClientSession,
+        image_data: bytes,
+        filename: str,
+        content_type: str,
+    ) -> str:
+        """Upload a single image to PicList/PicGo."""
         start_time = time.time()
-        logger.debug(f"开始上传图片到 PicGo: {filename}")
-        
-        max_retries = 3  # 最大重试次数
+        logger.debug(f"Start uploading image to PicGo: {filename}")
+
+        max_retries = 3
         retry_count = 0
-        
+
         while retry_count < max_retries:
             try:
-                # 准备上传表单
                 form = aiohttp.FormData()
-                form.add_field('image', 
-                             image_data,
-                             filename=filename,
-                             content_type='image/jpeg')
+                form.add_field(
+                    "image",
+                    image_data,
+                    filename=filename,
+                    content_type=content_type or "application/octet-stream",
+                )
 
-                # 构建完整的上传 URL
                 upload_url = urljoin(self.picgo_server, self.upload_path)
-                logger.debug(f"上传 URL: {upload_url}")
+                logger.debug(f"Upload URL: {upload_url}")
 
-                # 发送上传请求，添加超时
-                timeout = aiohttp.ClientTimeout(total=30)  # 30秒超时
+                timeout = aiohttp.ClientTimeout(total=30)
                 async with session.post(upload_url, data=form, timeout=timeout) as response:
                     if response.status != 200:
-                        raise Exception(f"上传失败，状态码: {response.status}")
-                    
-                    result = await response.json()
-                    logger.debug(f"PicGo 响应: {json.dumps(result, ensure_ascii=False)}")
+                        raise Exception(f"Upload failed with status {response.status}")
 
-                    if not result.get('success'):
-                        raise Exception(f"上传失败: {result.get('msg')}")
-                    
-                    if not result.get('result'):
-                        raise Exception("上传成功但未返回 URL")
-                    
-                    new_url = result['result'][0]
+                    result = await response.json()
+                    logger.debug(f"PicGo response: {json.dumps(result, ensure_ascii=False)}")
+
+                    if not result.get("success"):
+                        raise Exception(f"Upload failed: {result.get('msg')}")
+                    if not result.get("result"):
+                        raise Exception("Upload succeeded but returned no URL")
+
+                    new_url = result["result"][0]
+                    if not new_url:
+                        raise Exception("Upload succeeded but returned an empty URL")
+
                     elapsed = time.time() - start_time
-                    logger.debug(f"图片上传成功: {new_url}，耗时: {elapsed:.2f}秒")
+                    logger.debug(f"Image uploaded successfully: {new_url} elapsed={elapsed:.2f}s")
                     return new_url
 
             except asyncio.TimeoutError:
                 retry_count += 1
                 if retry_count < max_retries:
-                    logger.debug(f"上传超时，正在进行第 {retry_count} 次重试...")
-                    await asyncio.sleep(2)  # 等待2秒后重试
+                    logger.debug(f"Upload timed out, retrying ({retry_count}/{max_retries})")
+                    await asyncio.sleep(2)
                 else:
-                    raise Exception("上传多次超时，放弃重试")
-                    
-            except Exception as e:
+                    raise Exception("Upload timed out repeatedly")
+            except Exception as exc:
                 retry_count += 1
                 if retry_count < max_retries:
-                    logger.debug(f"上传失败: {str(e)}，正在进行第 {retry_count} 次重试...")
-                    await asyncio.sleep(2)  # 等待2秒后重试
+                    logger.debug(f"Upload failed: {exc}, retrying ({retry_count}/{max_retries})")
+                    await asyncio.sleep(2)
                 else:
-                    raise Exception(f"上传失败并超过最大重试次数: {str(e)}")
+                    raise Exception(f"Upload failed after retries: {exc}")
 
-    async def _process_single_image(self, session: aiohttp.ClientSession, 
-                                  image_url: str, alt: str) -> Tuple[str, str]:
-        """处理单张图片的下载和上传"""
+    async def _process_single_image(
+        self, session: aiohttp.ClientSession, image_url: str, alt: str
+    ) -> Tuple[str, str]:
+        """Download and upload one image."""
         start_time = time.time()
+
         try:
-            # 生成文件名
-            url_parts = urlparse(image_url)
-            original_filename = os.path.basename(url_parts.path) or 'image.jpg'
-            filename = f"{alt}_{original_filename}" if alt else original_filename
+            image_data, content_type = await self._download_image(session, image_url)
+            filename = self._guess_upload_filename(image_url, alt, content_type, image_data)
 
-            # 下载图片
-            image_data = await self._download_image(session, image_url)
-
-            # 保存调试文件
             debug_manager.save_binary_file(f"image_{filename}", image_data, prefix="img")
 
-            # 上传到图床
-            new_url = await self._upload_to_picgo(session, image_data, filename)
+            new_url = await self._upload_to_picgo(session, image_data, filename, content_type)
             elapsed = time.time() - start_time
-            logger.debug(f"单张图片处理完成，总耗时: {elapsed:.2f}秒")
+            logger.debug(f"Single image processed successfully: elapsed={elapsed:.2f}s")
             return image_url, new_url
-
-        except Exception as e:
-            logger.debug(f"处理图片失败: {str(e)}")
+        except Exception as exc:
+            logger.debug(f"Processing image failed: {exc}")
             return image_url, image_url
 
     async def upload_images(self, images: List[Tuple[str, str]]) -> Dict[str, str]:
-        """并发上传所有图片"""
+        """Upload all images concurrently."""
         if not images:
             return {}
 
         start_time = time.time()
-        logger.info(f"[ImageUploader] 开始处理 {len(images)} 张图片")
-        
-        # 创建临时目录用于存储下载的图片
+        logger.info(f"[ImageUploader] Start processing {len(images)} images")
+
         with tempfile.TemporaryDirectory() as temp_dir:
-            logger.debug(f"创建临时目录: {temp_dir}")
-            
-            # 设置并发限制和超时
-            semaphore = asyncio.Semaphore(2)  # 限制为最多同时处理 2 张图片
-            timeout = aiohttp.ClientTimeout(total=60)  # 设置60秒总超时
-            
+            logger.debug(f"Created temp directory: {temp_dir}")
+
+            semaphore = asyncio.Semaphore(2)
+            timeout = aiohttp.ClientTimeout(total=60)
+
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async def process_with_semaphore(image_url: str, alt: str) -> Tuple[str, str]:
                     async with semaphore:
                         try:
                             return await self._process_single_image(session, image_url, alt)
-                        except Exception as e:
-                            logger.debug(f"处理图片失败: {str(e)}")
-                            return image_url, image_url  # 失败时返回原始URL
-                
-                # 创建所有任务
+                        except Exception as exc:
+                            logger.debug(f"Processing image failed: {exc}")
+                            return image_url, image_url
+
                 tasks = [
                     asyncio.create_task(process_with_semaphore(image_url, alt))
                     for image_url, alt in images
                 ]
-                
+
                 try:
-                    # 等待所有任务完成，设置总超时
                     results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=120)
                 except asyncio.TimeoutError:
-                    logger.debug("图片处理总时间超过120秒，终止处理")
-                    # 取消所有未完成的任务
+                    logger.debug("Image processing exceeded 120 seconds, cancelling remaining tasks")
                     for task in tasks:
                         if not task.done():
                             task.cancel()
-                    # 获取已完成的结果
                     results = [(image_url, image_url) for image_url, _ in images]
-                
-                # 构建 URL 映射
+
                 url_mapping = {old_url: new_url for old_url, new_url in results}
-                
-                # 保存 URL 映射到调试文件
+
                 debug_manager.save_file(
                     "url_mapping.json",
                     json.dumps(url_mapping, ensure_ascii=False, indent=2),
-                    prefix="img"
+                    prefix="img",
                 )
-                
-                # 打印处理结果
+
                 elapsed = time.time() - start_time
-                logger.info(f"[ImageUploader] 处理完成: count={len(url_mapping)}, time={elapsed:.2f}s")
+                logger.info(f"[ImageUploader] Processing complete: count={len(url_mapping)}, time={elapsed:.2f}s")
                 for old_url, new_url in url_mapping.items():
-                    logger.debug(f"[ImageUploader] URL映射: {old_url} -> {new_url}")
-                
+                    logger.debug(f"[ImageUploader] URL mapping: {old_url} -> {new_url}")
+
                 return url_mapping
 
     def replace_image_urls(self, markdown: str, url_mapping: Dict[str, str]) -> str:
-        """替换 Markdown 中的图片 URL"""
-        start_time = time.time()  # 使用局部变量
-        logger.debug("开始替换图片 URL")
-        
-        # 保存替换前的 Markdown（调试用）
-        debug_manager.save_file("before_replace.md", markdown, prefix="img")
+        """Replace remote image URLs in Markdown with uploaded local targets."""
+        start_time = time.time()
+        logger.debug("Start replacing image URLs")
 
-        # 保存 URL 映射关系（调试用）
+        debug_manager.save_file("before_replace.md", markdown, prefix="img")
         debug_manager.save_file(
             "replace_mapping.json",
             json.dumps(url_mapping, indent=2, ensure_ascii=False),
-            prefix="img"
+            prefix="img",
         )
-        
-        # 替换每个图片 URL
+
         for old_url, new_url in url_mapping.items():
-            logger.debug(f"替换图片 URL: {old_url} -> {new_url}")
-            # 使用正则表达式替换图片 URL
+            logger.debug(f"Replace image URL: {old_url} -> {new_url}")
+            target_type, rendered_target = self._normalize_local_image_target(new_url)
             old_url_escaped = re.escape(old_url)
-            # 替换带 alt 文本的图片
-            markdown = re.sub(f'!\\[(.*?)\\]\\({old_url_escaped}\\)', f'![\\1]({new_url})', markdown)
-            # 替换不带 alt 文本的图片
-            markdown = re.sub(f'!\\[\\]\\({old_url_escaped}\\)', f'![]({new_url})', markdown)
-            # 替换直接的 URL
-            markdown = markdown.replace(old_url, new_url)
-        
-        # 保存最终的 Markdown（调试用）
+
+            if target_type == "wikilink":
+                markdown = re.sub(
+                    f"!\\[(.*?)\\]\\({old_url_escaped}\\)",
+                    f"![[{rendered_target}]]",
+                    markdown,
+                )
+                markdown = re.sub(
+                    f"!\\[\\]\\({old_url_escaped}\\)",
+                    f"![[{rendered_target}]]",
+                    markdown,
+                )
+            else:
+                markdown = re.sub(
+                    f"!\\[(.*?)\\]\\({old_url_escaped}\\)",
+                    f"![\\1]({rendered_target})",
+                    markdown,
+                )
+                markdown = re.sub(
+                    f"!\\[\\]\\({old_url_escaped}\\)",
+                    f"![]({rendered_target})",
+                    markdown,
+                )
+                markdown = markdown.replace(old_url, rendered_target)
+
         debug_manager.save_file("final.md", markdown, prefix="img")
-        
-        elapsed = time.time() - start_time  # 使用局部变量计算耗时
-        logger.debug(f"URL 替换完成，耗时: {elapsed:.2f}秒")
-        
+
+        elapsed = time.time() - start_time
+        logger.debug(f"Image URL replacement complete: elapsed={elapsed:.2f}s")
         return markdown
 
-# 创建全局上传器实例
-image_uploader = ImageUploader() 
+
+image_uploader = ImageUploader()

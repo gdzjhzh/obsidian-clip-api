@@ -22,6 +22,7 @@ obsidian_api:
   timeout: 30  # 请求超时时间（秒）
   retry_count: 3  # 重试次数
   retry_delay: 1  # 重试间隔（秒）
+  verify_ssl: true  # 如果使用 HTTPS 自签名证书，本地调试可临时设为 false
 
 # CouchDB 配置（向后兼容，建议迁移到 REST API）
 couchdb:
