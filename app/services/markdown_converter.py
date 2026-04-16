@@ -2,6 +2,7 @@
 Markdown conversion service.
 """
 
+import html as html_lib
 import re
 import time
 from typing import List, Tuple
@@ -16,6 +17,19 @@ from ..utils.debug_manager import debug_manager
 class MarkdownConverter:
     """Convert HTML into Markdown and track image URLs."""
 
+    def _normalize_image_url(self, url: str) -> str:
+        """Normalize equivalent image URLs so deduping treats them as the same file."""
+        url = (url or "").strip()
+        if not url:
+            return ""
+
+        url = html_lib.unescape(url)
+        url = url.replace("\\x26amp;", "&")
+        url = url.replace("\\x26", "&")
+        url = url.replace("\\x22", '"')
+        url = url.replace("\\/", "/")
+        return url
+
     def _extract_images(self, html: str) -> List[Tuple[str, str]]:
         """Extract image URLs from regular img tags."""
         start_time = time.time()
@@ -25,7 +39,7 @@ class MarkdownConverter:
         images: List[Tuple[str, str]] = []
 
         for img in soup.find_all("img"):
-            src = img.get("src", "") or img.get("data-src", "")
+            src = self._normalize_image_url(img.get("src", "") or img.get("data-src", ""))
             if src:
                 alt = img.get("alt", "")
                 images.append((src, alt))
@@ -50,7 +64,7 @@ class MarkdownConverter:
             tag.decompose()
 
         for span in soup.find_all("span"):
-            if not span.get_text(strip=True):
+            if not span.get_text(strip=True) and not span.find("img"):
                 span.decompose()
 
         for a in soup.find_all("a"):
@@ -110,19 +124,17 @@ class MarkdownConverter:
 
     def _extract_wechat_images(self, html: str) -> List[Tuple[str, str]]:
         """Extract正文图片 from WeChat picture_page_info_list."""
-        match = re.search(r"picture_page_info_list\s*=\s*(\[[\s\S]*?\])\s*\.slice", html)
+        match = re.search(r"picture_page_info_list\s*[:=]\s*(\[[\s\S]*?\])\s*[,.)]", html)
         if not match:
             return []
 
         raw_list = match.group(1)
-        main_urls = re.findall(r"\{\s*width:[^}]*?cdn_url:\s*'([^']+)'", raw_list)
+        main_urls = re.findall(r"cdn_url:\s*(?:JsDecode\()?'([^']+)'", raw_list)
 
         images: List[Tuple[str, str]] = []
         seen = set()
         for url in main_urls:
-            url = url.replace("\\x26amp;", "&")
-            url = url.replace("\\x26", "&")
-            url = url.replace("\\x22", '"')
+            url = self._normalize_image_url(url)
             if url in seen:
                 continue
             seen.add(url)
@@ -173,11 +185,15 @@ class MarkdownConverter:
             return self._strip_empty_image_placeholders(markdown)
 
         present_urls = {
-            url.strip()
+            self._normalize_image_url(url)
             for url in re.findall(r"!\[[^\]]*\]\(([^)]+)\)", markdown)
             if url.strip()
         }
-        missing_urls = [url for url, _ in expected_images if url and url not in present_urls]
+        missing_urls = []
+        for url, _ in expected_images:
+            normalized_url = self._normalize_image_url(url)
+            if normalized_url and normalized_url not in present_urls and normalized_url not in missing_urls:
+                missing_urls.append(normalized_url)
 
         next_index = 0
 
@@ -217,13 +233,21 @@ class MarkdownConverter:
             html = self._clean_wechat_content(html)
             tag_images = self._extract_images(html)
 
-            seen_urls = set()
+            image_index: dict[str, int] = {}
             images: List[Tuple[str, str]] = []
             for image_url, alt in wechat_images + tag_images:
-                if image_url in seen_urls:
+                normalized_url = self._normalize_image_url(image_url)
+                if not normalized_url:
                     continue
-                seen_urls.add(image_url)
-                images.append((image_url, alt))
+                if normalized_url in image_index:
+                    existing_index = image_index[normalized_url]
+                    existing_url, existing_alt = images[existing_index]
+                    if not existing_alt and alt:
+                        images[existing_index] = (existing_url, alt)
+                    continue
+
+                image_index[normalized_url] = len(images)
+                images.append((normalized_url, alt))
 
             if wechat_images:
                 logger.info(
