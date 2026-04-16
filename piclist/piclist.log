@@ -1,0 +1,110 @@
+2026-04-15 15:15:49 [PicList INFO] Before transform 
+2026-04-15 15:15:49 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 15:15:49 [PicList WARN] can't get /root/.piclist/serverTemp/piclist-test.txt's image size 
+2026-04-15 15:15:49 [PicList WARN] fallback to 200 * 200 
+2026-04-15 15:15:49 [PicList INFO] Before upload 
+2026-04-15 15:15:49 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 15:15:49 [PicList SUCCESS] 
+/vault/Clippings/_assets/piclist-test.txt 
+2026-04-15 15:16:09 [PicList INFO] Before transform 
+2026-04-15 15:16:09 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 15:16:09 [PicList INFO] Before upload 
+2026-04-15 15:16:09 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 15:16:09 [PicList SUCCESS] 
+/vault/Clippings/_assets/ExLink_%E5%BA%94%E7%94%A8%E5%88%97%E8%A1%A8_%E8%A7%84%E5%88%99%E7%BC%96%E8%BE%91%E5%99%A8_%E5%8C%B9%E9%85%8D%E6%97%A5%E5%BF%97_ea46c468f27a.png 
+2026-04-15 15:16:09 [PicList INFO] Before transform 
+2026-04-15 15:16:09 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 15:16:09 [PicList INFO] Before upload 
+2026-04-15 15:16:09 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 15:16:09 [PicList SUCCESS] 
+/vault/Clippings/_assets/cover_image_87aff2d9fea0.jpg 
+2026-04-15 15:16:10 [PicList INFO] Before transform 
+2026-04-15 15:16:10 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 15:16:10 [PicList INFO] Before upload 
+2026-04-15 15:16:10 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 15:16:10 [PicList SUCCESS] 
+/vault/Clippings/_assets/VideoSpeed_%E8%AE%BE%E7%BD%AE%E7%95%8C%E9%9D%A2_%E6%97%A5%E5%BF%97%E6%9F%A5%E7%9C%8B%E5%99%A8_1023ca9c3185.png 
+2026-04-15 15:16:10 [PicList INFO] Before transform 
+2026-04-15 15:16:10 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 15:16:10 [PicList INFO] Before upload 
+2026-04-15 15:16:10 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 15:16:10 [PicList SUCCESS] 
+/vault/Clippings/_assets/TigerInTheWall_%E4%B8%BB%E7%95%8C%E9%9D%A2_%E6%B8%85%E7%90%86%E7%AE%A1%E7%90%86%E5%99%A8_%E5%BF%AB%E9%80%9F%E6%B8%85%E7%90%86_2bf2397ca4aa.png 
+2026-04-15 15:16:11 [PicList INFO] Before transform 
+2026-04-15 15:16:11 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 15:16:11 [PicList INFO] Before upload 
+2026-04-15 15:16:11 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 15:16:11 [PicList SUCCESS] 
+/vault/Clippings/_assets/%E6%B8%85%E7%90%86%E5%90%8E%E7%9A%84%E5%88%86%E4%BA%AB%E8%8F%9C%E5%8D%95_a09e8d0982d8.jpg 
+2026-04-15 22:41:37 [PicList INFO] Before transform 
+2026-04-15 22:41:37 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 22:41:37 [PicList INFO] Before upload 
+2026-04-15 22:41:37 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 22:41:38 [PicList SUCCESS] 
+/vault/Clippings/_assets/cover_image_87aff2d9fea0.jpg 
+2026-04-15 22:42:25 [PicList INFO] Before transform 
+2026-04-15 22:42:25 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 22:42:25 [PicList INFO] Before upload 
+2026-04-15 22:42:25 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 22:42:25 [PicList SUCCESS] 
+/vault/Clippings/_assets/cover_image_87aff2d9fea0.jpg 
+2026-04-15 22:48:45 [PicList INFO] Before transform 
+2026-04-15 22:48:45 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 22:48:45 [PicList INFO] Before upload 
+2026-04-15 22:48:45 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 22:48:45 [PicList SUCCESS] 
+/vault/Clippings/_assets/cover_image_87aff2d9fea0.jpg 
+2026-04-15 22:48:45 [PicList INFO] Before transform 
+2026-04-15 22:48:45 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 22:48:45 [PicList INFO] Before upload 
+2026-04-15 22:48:45 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 22:48:45 [PicList SUCCESS] 
+/vault/Clippings/_assets/VideoSpeed_%E8%AE%BE%E7%BD%AE%E7%95%8C%E9%9D%A2_%E6%97%A5%E5%BF%97%E6%9F%A5%E7%9C%8B%E5%99%A8_1023ca9c3185.png 
+2026-04-15 22:48:46 [PicList INFO] Before transform 
+2026-04-15 22:48:46 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-15 22:48:46 [PicList INFO] Before upload 
+2026-04-15 22:48:46 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-15 22:48:46 [PicList SUCCESS] 
+/vault/Clippings/_assets/ExLink_%E5%BA%94%E7%94%A8%E5%88%97%E8%A1%A8_%E8%A7%84%E5%88%99%E7%BC%96%E8%BE%91%E5%99%A8_%E5%8C%B9%E9%85%8D%E6%97%A5%E5%BF%97_ea46c468f27a.png 
+2026-04-16 16:12:38 [PicList INFO] Before transform 
+2026-04-16 16:12:38 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-16 16:12:38 [PicList INFO] Before upload 
+2026-04-16 16:12:38 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-16 16:12:38 [PicList SUCCESS] 
+/vault/Clippings/_assets/cover_image_0 
+2026-04-16 16:12:38 [PicList INFO] Before transform 
+2026-04-16 16:12:38 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-16 16:12:38 [PicList INFO] Before upload 
+2026-04-16 16:12:38 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-16 16:12:38 [PicList SUCCESS] 
+/vault/Clippings/_assets/%E5%9C%A8%E6%89%8B%E6%9C%BA%E5%92%8C%E7%94%B5%E8%84%91%E4%B8%8A%E4%BD%BF%E7%94%A8%E8%A7%86%E9%A2%91%E8%BD%AC%E5%BD%95_640 
+2026-04-16 16:12:38 [PicList INFO] Before transform 
+2026-04-16 16:12:38 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-16 16:12:38 [PicList INFO] Before upload 
+2026-04-16 16:12:38 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-16 16:12:38 [PicList SUCCESS] 
+/vault/Clippings/_assets/%E5%9C%A8%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E4%B8%AD%E8%BD%AC%E5%8F%91%E5%86%85%E5%AE%B9%E7%BB%99%E6%9C%BA%E5%99%A8%E4%BA%BA%E5%B9%B6%E6%B7%BB%E5%8A%A0%E8%AF%84%E8%AE%BA_640 
+2026-04-16 16:12:38 [PicList INFO] Before transform 
+2026-04-16 16:12:38 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-16 16:12:38 [PicList INFO] Before upload 
+2026-04-16 16:12:38 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-16 16:12:38 [PicList SUCCESS] 
+/vault/Clippings/_assets/%E4%BF%A1%E6%81%AF%E4%BB%8E%E9%87%87%E9%9B%86%E5%88%B0%E6%8E%A8%E9%80%81%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B_640 
+2026-04-16 16:12:39 [PicList INFO] Before transform 
+2026-04-16 16:12:39 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-16 16:12:39 [PicList INFO] Before upload 
+2026-04-16 16:12:39 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-16 16:12:39 [PicList SUCCESS] 
+/vault/Clippings/_assets/%E7%9B%B8%E5%85%B3%E7%AC%94%E8%AE%B0%E5%8F%91%E7%8E%B0%E7%9A%84%E6%95%88%E6%9E%9C_640 
+2026-04-16 16:12:39 [PicList INFO] Before transform 
+2026-04-16 16:12:39 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-16 16:12:39 [PicList INFO] Before upload 
+2026-04-16 16:12:39 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-16 16:12:39 [PicList SUCCESS] 
+/vault/Clippings/_assets/URL%20%E6%91%98%E8%A6%81%E3%80%81%E5%9B%BE%E7%89%87%E8%AF%86%E5%88%AB%E3%80%81%E8%87%AA%E5%8A%A8%E6%89%93%E6%A0%87%E7%AD%BE%E7%9A%84%E6%95%88%E6%9E%9C_640 
+2026-04-16 16:12:39 [PicList INFO] Before transform 
+2026-04-16 16:12:39 [PicList INFO] Transforming... Current transformer is [path] 
+2026-04-16 16:12:39 [PicList INFO] Before upload 
+2026-04-16 16:12:39 [PicList INFO] Uploading... Current uploader is [local] 
+2026-04-16 16:12:39 [PicList SUCCESS] 
+/vault/Clippings/_assets/Obsidian%20%E9%87%8C%E7%9A%84%E6%AF%8F%E6%97%A5%E5%A4%8D%E7%9B%98%E6%95%88%E6%9E%9C_640 

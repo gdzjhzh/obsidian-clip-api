@@ -1,0 +1,13 @@
+﻿{
+  "picBed": {
+    "uploader": "local",
+    "current": "local",
+    "transformer": "path",
+    "local": {
+      "path": "/vault/Clippings/_assets",
+      "customUrl": "",
+      "webPath": "/vault/Clippings/_assets"
+    }
+  },
+  "picgoPlugins": {}
+}
